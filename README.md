@@ -1,0 +1,1 @@
+# gera-qr-code-Dinastia
