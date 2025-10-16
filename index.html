@@ -143,36 +143,52 @@
         }
 
         async function enviarWebhook(instanceId) {
-            try {
-                const response = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        instanceId: instanceId
-                    })
-                });
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                instanceId: instanceId
+            })
+        });
 
-                const data = await response.json();
-
-                // Verifica se conectou com sucesso
-                if (data.status === 'connected' || data.connected === true) {
-                    mostrarSucesso();
-                    pararPolling();
-                } else if (data.qrCode) {
-                    // Atualiza o QR Code
-                    mostrarQrCode(data.qrCode);
-                    resetCountdown();
-                } else if (data.error) {
-                    mostrarErro(data.error);
-                    pararPolling();
-                }
-            } catch (error) {
-                console.error('Erro ao conectar:', error);
-                mostrarErro('Erro ao conectar com o servidor');
+        const data = await response.json();
+        
+        // Acessa os dados dentro da estrutura retornada pelo n8n
+        const responseData = Array.isArray(data) ? data[0] : data;
+        
+        // Verifica se a requisição foi bem-sucedida
+        if (responseData.success && responseData.data) {
+            const { QRCode, code } = responseData.data;
+            
+            // Se tem QR Code, exibe
+            if (QRCode) {
+                mostrarQrCode(QRCode);
+                resetCountdown();
             }
+        } else if (responseData.code === 200 && !responseData.data.QRCode) {
+            // Se retornou 200 mas sem QR Code, pode ser que já conectou
+            mostrarSucesso();
+            pararPolling();
+        } else {
+            mostrarErro('Erro ao gerar QR Code');
+            pararPolling();
         }
+    } catch (error) {
+        console.error('Erro ao conectar:', error);
+        mostrarErro('Erro ao conectar com o servidor');
+        pararPolling();
+    }
+}
+
+function mostrarQrCode(qrCodeBase64) {
+    const qrContainer = document.getElementById('qrContainer');
+    
+    // O QRCode já vem completo com data:image/png;base64,
+    qrContainer.innerHTML = `<img src="${qrCodeBase64}" class="qr-image" alt="QR Code WhatsApp">`;
+}
 
         function mostrarQrCode(qrCodeBase64) {
             const qrContainer = document.getElementById('qrContainer');
